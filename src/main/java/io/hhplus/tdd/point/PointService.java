@@ -39,7 +39,7 @@ public class PointService {
 
         long totalAmount = existPoints - amount;
         UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
-        pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, System.currentTimeMillis());
+        pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
         return userPoint;
     }
 

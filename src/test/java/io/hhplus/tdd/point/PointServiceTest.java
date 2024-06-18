@@ -184,7 +184,7 @@ public class PointServiceTest {
 
         // then
         assertEquals(4000, availablePoints);
-        assertEquals(availablePoints, realUserPoint.point());
+        assertEquals(4000, realUserPoint.point());
     }
 
 }
