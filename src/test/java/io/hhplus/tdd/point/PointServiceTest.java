@@ -13,6 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -222,6 +225,35 @@ public class PointServiceTest {
 
         // when - then
         assertThrows(RuntimeException.class, () -> pointService.use(id, amount));
+    }
+
+    @Test
+    void use_points_concurrently() throws InterruptedException {
+        // given
+        long id = 1;
+        long expectedAmount = 0;
+        long chargeAmount = 10000;
+        UserPoint expectedUserPoint = new UserPoint(id, expectedAmount, System.currentTimeMillis());
+        given(userPointRepository.selectById(anyLong())).willReturn(expectedUserPoint);
+        pointService.charge(id, chargeAmount);
+
+        // when - then
+        ExecutorService executorService = Executors.newFixedThreadPool(32);
+        int threadCount = 100;
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        for (int i = 1; i <= threadCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    pointService.use(id,100);
+                } catch (RuntimeException e) {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+        UserPoint userPoint = userPointRepository.selectById(id);
+        assertEquals(expectedAmount, userPoint.point());
     }
 
 }
