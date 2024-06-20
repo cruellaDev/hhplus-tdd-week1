@@ -227,6 +227,10 @@ public class PointServiceTest {
         assertThrows(RuntimeException.class, () -> pointService.use(id, amount));
     }
 
+    /**
+     * 100번 한꺼번에 포인트 사용 시 순차적으로 처리하여 결과 0원
+     * @throws InterruptedException
+     */
     @Test
     void use_points_concurrently() throws InterruptedException {
         // given
