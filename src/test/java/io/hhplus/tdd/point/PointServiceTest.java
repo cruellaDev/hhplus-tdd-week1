@@ -211,4 +211,17 @@ public class PointServiceTest {
         assertThrows(RuntimeException.class, () -> pointService.charge(id, amount));
     }
 
+    /**
+     * 사용 금액이 0 이하일 시 예외를 던진다.
+     */
+    @Test
+    void use_points_less_then_zero_throw_exception() {
+        // given
+        long id = 1;
+        long amount = -1000;
+
+        // when - then
+        assertThrows(RuntimeException.class, () -> pointService.use(id, amount));
+    }
+
 }

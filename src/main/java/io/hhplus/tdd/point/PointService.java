@@ -43,6 +43,9 @@ public class PointService {
     }
 
     public UserPoint use(long id, long amount) {
+        if (amount <= 0) {
+            throw new RuntimeException("사용 금액은 0보다 커야 합니다.");
+        }
         long existPoints = this.selectExistPointsByUserId(id);
         if (amount > existPoints) {
             throw new RuntimeException("잔액이 부족합니다.");
