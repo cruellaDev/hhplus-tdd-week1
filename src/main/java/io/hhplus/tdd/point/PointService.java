@@ -2,6 +2,7 @@ package io.hhplus.tdd.point;
 
 import io.hhplus.tdd.point.repository.PointHistoryRepository;
 import io.hhplus.tdd.point.repository.UserPointRepository;
+import io.hhplus.tdd.utils.LockByKey;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ public class PointService {
 
     private final UserPointRepository userPointRepository;
     private final PointHistoryRepository pointHistoryRepository;
+    private final LockByKey lockByKey;
 
     public UserPoint point(long id) {
         return userPointRepository.selectById(id);
@@ -23,12 +25,21 @@ public class PointService {
         return pointHistoryRepository.selectAllByUserId(id);
     }
 
-    public UserPoint charge(long id, long amount) {
+    public UserPoint charge(long id, long amount)  {
+        if (amount <= 0) {
+            throw new RuntimeException("충전 금액은 0보다 커야 합니다.");
+        }
         long existPoints = this.selectExistPointsByUserId(id);
         long totalAmount = existPoints + amount;
-        UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
-        pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, System.currentTimeMillis());
-        return userPoint;
+        try {
+            return lockByKey.manageLock(id, () -> {
+                UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
+                pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, System.currentTimeMillis());
+                return userPoint;
+            });
+        } catch (InterruptedException e) {
+            throw new RuntimeException("관리자에게 문의하십시오.");
+        }
     }
 
     public UserPoint use(long id, long amount) {
@@ -38,9 +49,15 @@ public class PointService {
         }
 
         long totalAmount = existPoints - amount;
-        UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
-        pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
-        return userPoint;
+        try {
+            return lockByKey.manageLock(id, () -> {
+                UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
+                pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
+                return userPoint;
+            });
+        } catch (InterruptedException e) {
+            throw new RuntimeException("관리자에게 문의하십시오.");
+        }
     }
 
     private long selectExistPointsByUserId(long id) {
