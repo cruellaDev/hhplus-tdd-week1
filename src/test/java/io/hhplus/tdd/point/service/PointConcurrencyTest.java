@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -62,10 +63,10 @@ public class PointConcurrencyTest {
         // given
         long id = 1;
         long chargeAmount = 10000;
-        long expectedAmount = 0;
 
         // when - then
-        UserPointDto chargedPoint = pointService.charge(id, chargeAmount);
+        AtomicInteger failCount = new AtomicInteger();
+        pointService.charge(id, chargeAmount);
         ExecutorService executorService = Executors.newFixedThreadPool(32);
         int threadCount = 10;
         CountDownLatch latch = new CountDownLatch(threadCount);
@@ -75,6 +76,7 @@ public class PointConcurrencyTest {
                     pointService.use(id,3000);
                 } catch (RuntimeException e) {
                     latch.countDown();
+                    failCount.getAndIncrement();
                 }
             });
         }
@@ -82,7 +84,7 @@ public class PointConcurrencyTest {
         latch.await();
         executorService.shutdown();
 
-        assertEquals(latch.getCount(), 7);
+        assertEquals(failCount.get(), 7);
     }
 
 }
