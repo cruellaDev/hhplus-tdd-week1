@@ -18,7 +18,7 @@ public class PointConcurrencyTest {
     private PointService pointService;
 
     /**
-     * 1000원 충전 후 100씩 100번 한꺼번에 포인트 사용 시 순차적으로 처리하여 결과 0원
+     * 10000원 충전 후 1000씩 10번 한꺼번에 포인트 사용 시 순차적으로 처리하여 결과 0원
      * @throws InterruptedException
      * @link <a href="https://thalals.tistory.com/370">참고URL</a>
      */
@@ -53,12 +53,12 @@ public class PointConcurrencyTest {
     }
 
     /**
-     * 1000원 충전 후 100씩 100번 한꺼번에 포인트 사용 시 순차적으로 처리하여 결과 0원
+     * 10000원 충전 후 3000씩 사용하여 7번 실패
      * @throws InterruptedException
      * @link <a href="https://thalals.tistory.com/370">참고URL</a>
      */
     @Test
-    void with_charging_10000_points_use_3000_points_concurrently_for_10_times() throws InterruptedException {
+    void with_charging_10000_points_use_3000_points_concurrently_then_fail_7_times() throws InterruptedException {
         // given
         long id = 1;
         long chargeAmount = 10000;
