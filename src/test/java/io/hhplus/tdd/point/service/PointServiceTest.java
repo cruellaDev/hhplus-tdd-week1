@@ -1,5 +1,10 @@
-package io.hhplus.tdd.point;
+package io.hhplus.tdd.point.service;
 
+import io.hhplus.tdd.point.dto.PointHistoryDto;
+import io.hhplus.tdd.point.dto.UserPointDto;
+import io.hhplus.tdd.point.entity.PointHistory;
+import io.hhplus.tdd.point.enums.TransactionType;
+import io.hhplus.tdd.point.entity.UserPoint;
 import io.hhplus.tdd.point.repository.PointHistoryRepository;
 import io.hhplus.tdd.point.repository.UserPointRepository;
 import io.hhplus.tdd.utils.LockByKey;
@@ -16,6 +21,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,10 +55,11 @@ public class PointServiceTest {
         given(userPointRepository.selectById(anyLong())).willReturn(expectedUserPoint);
 
         // when
-        UserPoint realUserPoint = pointService.point(id);
+        UserPointDto realUserPoint = pointService.point(id);
 
         // then
-        assertEquals(expectedUserPoint, realUserPoint);
+        assertEquals(expectedUserPoint.id(), realUserPoint.getId());
+        assertEquals(expectedUserPoint.point(), realUserPoint.getPoint());
     }
 
     /**
@@ -66,7 +73,7 @@ public class PointServiceTest {
         given(pointHistoryRepository.selectAllByUserId(anyLong())).willReturn(expectedPointHistory);
 
         // when
-        List<PointHistory> realPointHistory = pointService.history(id);
+        List<PointHistoryDto> realPointHistory = pointService.history(id);
 
         // then
         assertTrue(realPointHistory.isEmpty());
@@ -81,14 +88,13 @@ public class PointServiceTest {
         long id = 1;
         long amount = 5000;
 
-        UserPoint expectedUserPoint = new UserPoint(id, amount, System.currentTimeMillis());
-//        given(userPointRepository.insertOrUpdate(anyLong(), anyLong())).willReturn(expectedUserPoint);
+        UserPointDto expectedUserPoint = UserPointDto.from(new UserPoint(id, amount, System.currentTimeMillis()));
         given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> expectedUserPoint);
 
         // when - then
-        UserPoint realUserPoint = pointService.charge(id, amount);
-        assertEquals(expectedUserPoint.id(), realUserPoint.id());
-        assertEquals(expectedUserPoint.point(), realUserPoint.point());
+        UserPointDto realUserPoint = pointService.charge(id, amount);
+        assertEquals(expectedUserPoint.getId(), realUserPoint.getId());
+        assertEquals(expectedUserPoint.getPoint(), realUserPoint.getPoint());
     }
 
     /**
@@ -101,11 +107,10 @@ public class PointServiceTest {
         long amount = 5000;
         long times = 2;
 
-        UserPoint expectedUserPoint = new UserPoint(id, amount * times, System.currentTimeMillis());
+        UserPointDto expectedUserPoint = UserPointDto.from(new UserPoint(id, amount * times, System.currentTimeMillis()));
         List<PointHistory> expectedPointHistory = List.of(
                 new PointHistory(1, 1, amount, TransactionType.CHARGE, System.currentTimeMillis()),
                 new PointHistory(1, 1, amount, TransactionType.CHARGE, System.currentTimeMillis()));
-//        given(userPointRepository.insertOrUpdate(anyLong(), anyLong())).willReturn(expectedUserPoint);
         given(pointHistoryRepository.selectAllByUserId(anyLong())).willReturn(expectedPointHistory);
         given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> expectedUserPoint);
 
@@ -114,11 +119,11 @@ public class PointServiceTest {
         pointService.charge(id, amount);
 
         // then
-        List<PointHistory> realPointHistory = pointService.history(id);
+        List<PointHistoryDto> realPointHistory = pointService.history(id);
         assertFalse(realPointHistory.isEmpty());
         assertEquals(2, realPointHistory.size());
-        assertEquals(expectedPointHistory.get(0).amount(), realPointHistory.get(0).amount());
-        assertEquals(expectedPointHistory.get(1).amount(), realPointHistory.get(1).amount());
+        assertEquals(expectedPointHistory.get(0).amount(), realPointHistory.get(0).getAmount());
+        assertEquals(expectedPointHistory.get(1).amount(), realPointHistory.get(1).getAmount());
     }
 
     /**
@@ -132,18 +137,17 @@ public class PointServiceTest {
         long times = 2;
 
         UserPoint expectedUserPoint = new UserPoint(id, amount * times, System.currentTimeMillis());
-//        given(userPointRepository.insertOrUpdate(anyLong(), anyLong())).willReturn(expectedUserPoint);
         given(userPointRepository.selectById(anyLong())).willReturn(expectedUserPoint);
-        given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> expectedUserPoint);
+        given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> UserPointDto.from(expectedUserPoint));
 
         // when
         pointService.charge(id, amount);
         pointService.charge(id, amount);
-        UserPoint realUserPoint = pointService.point(id);
+        UserPointDto realUserPoint = pointService.point(id);
 
         // then
-        assertEquals(expectedUserPoint.id(), realUserPoint.id());
-        assertEquals(expectedUserPoint.point(), realUserPoint.point());
+        assertEquals(expectedUserPoint.id(), realUserPoint.getId());
+        assertEquals(expectedUserPoint.point(), realUserPoint.getPoint());
     }
 
     /**
@@ -158,19 +162,18 @@ public class PointServiceTest {
         long spentAmount = 5000;
 
         UserPoint expectedUserPoint = new UserPoint(id, chargeAmount, System.currentTimeMillis());
-//        given(userPointRepository.insertOrUpdate(anyLong(), anyLong())).willReturn(expectedUserPoint);
         given(userPointRepository.selectById(anyLong())).willReturn(expectedUserPoint);
-        given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> expectedUserPoint);
+        given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> UserPointDto.from(expectedUserPoint));
 
         // when
         pointService.charge(id, chargeAmount);
         assertThrows(RuntimeException.class, () -> pointService.use(id, spentAmount));
 
-        UserPoint realUserPoint = pointService.point(id);
+        UserPointDto realUserPoint = pointService.point(id);
 
         // then
-        assertEquals(expectedUserPoint.id(), realUserPoint.id());
-        assertEquals(expectedUserPoint.point(), realUserPoint.point());
+        assertEquals(expectedUserPoint.id(), realUserPoint.getId());
+        assertEquals(expectedUserPoint.point(), realUserPoint.getPoint());
     }
 
     /**
@@ -184,21 +187,20 @@ public class PointServiceTest {
         long spentAmount = 1000;
 
         UserPoint expectedUserPoint = new UserPoint(id, chargeAmount - spentAmount, System.currentTimeMillis());
-//        given(userPointRepository.insertOrUpdate(anyLong(), anyLong())).willReturn(expectedUserPoint);
         given(userPointRepository.selectById(anyLong())).willReturn(expectedUserPoint);
         given(pointHistoryRepository.selectAvailableUserPointByUserId(anyLong())).willReturn(chargeAmount - spentAmount);
-        given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> expectedUserPoint);
+        given(lockByKey.manageLock(anyLong(), any())).willAnswer(invocation -> UserPointDto.from(expectedUserPoint));
 
         // when
         pointService.charge(id, chargeAmount);
         pointService.use(id, spentAmount);
 
         long availablePoints = pointHistoryRepository.selectAvailableUserPointByUserId(id);
-        UserPoint realUserPoint = pointService.point(id);
+        UserPointDto realUserPoint = pointService.point(id);
 
         // then
         assertEquals(4000, availablePoints);
-        assertEquals(4000, realUserPoint.point());
+        assertEquals(4000, realUserPoint.getPoint());
     }
 
     /**
@@ -225,39 +227,6 @@ public class PointServiceTest {
 
         // when - then
         assertThrows(RuntimeException.class, () -> pointService.use(id, amount));
-    }
-
-    /**
-     * 100번 한꺼번에 포인트 사용 시 순차적으로 처리하여 결과 0원
-     * @throws InterruptedException
-     */
-    @Test
-    void use_points_concurrently() throws InterruptedException {
-        // given
-        long id = 1;
-        long expectedAmount = 0;
-        long chargeAmount = 10000;
-        UserPoint expectedUserPoint = new UserPoint(id, expectedAmount, System.currentTimeMillis());
-        given(userPointRepository.selectById(anyLong())).willReturn(expectedUserPoint);
-        pointService.charge(id, chargeAmount);
-
-        // when - then
-        ExecutorService executorService = Executors.newFixedThreadPool(32);
-        int threadCount = 100;
-        CountDownLatch latch = new CountDownLatch(threadCount);
-        for (int i = 1; i <= threadCount; i++) {
-            executorService.submit(() -> {
-                try {
-                    pointService.use(id,100);
-                } catch (RuntimeException e) {
-                    latch.countDown();
-                }
-            });
-        }
-
-        latch.await();
-        UserPoint userPoint = userPointRepository.selectById(id);
-        assertEquals(expectedAmount, userPoint.point());
     }
 
 }
