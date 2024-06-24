@@ -1,6 +1,10 @@
-package io.hhplus.tdd.point;
+package io.hhplus.tdd.point.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.hhplus.tdd.point.dto.UserPointDto;
+import io.hhplus.tdd.point.entity.PointHistory;
+import io.hhplus.tdd.point.service.PointService;
+import io.hhplus.tdd.point.entity.UserPoint;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -69,7 +73,7 @@ public class PointControllerTest {
     void call_getUserPointApi_when_no_one_charge_then_return_empty_userPoint() throws Exception{
         // given
         long id = 1;
-        UserPoint expectedUserPoint = UserPoint.empty(id);
+        UserPointDto expectedUserPoint = UserPointDto.from(UserPoint.empty(id));
         given(pointService.point(anyLong())).willReturn(expectedUserPoint);
 
         // when - then
@@ -80,8 +84,8 @@ public class PointControllerTest {
         ObjectMapper objectMapper = new ObjectMapper();
         UserPoint realUserPoint = objectMapper.readValue(mvcResult.getResponse().getContentAsString(), UserPoint.class);
 
-        assertEquals(expectedUserPoint.id(), realUserPoint.id());
-        assertEquals(expectedUserPoint.point(), realUserPoint.point());
+        assertEquals(expectedUserPoint.getId(), realUserPoint.id());
+        assertEquals(expectedUserPoint.getPoint(), realUserPoint.point());
     }
 
     /**
