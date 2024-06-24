@@ -21,7 +21,15 @@ public class PointHistoryRepositoryImpl implements PointHistoryRepository {
     }
 
     @Override
-    public PointHistory insert(long userId, long amount, TransactionType type, long updateMillis) {
-        return pointHistoryTable.insert(userId, amount, type, updateMillis);
+    public void insert(long userId, long amount, TransactionType type, long updateMillis) {
+        pointHistoryTable.insert(userId, amount, type, updateMillis);
+    }
+
+    @Override
+    public long selectAvailableUserPointByUserId(long id) {
+        return pointHistoryTable.selectAllByUserId(id)
+                .stream()
+                .map((ph) -> ph.type().equals(TransactionType.CHARGE) ? ph.amount() :  ph.amount() * -1)
+                .reduce(0L, Long::sum);
     }
 }

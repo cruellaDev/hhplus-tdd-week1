@@ -13,7 +13,6 @@ import java.util.Optional;
 public class PointService {
 
     private final UserPointRepository userPointRepository;
-
     private final PointHistoryRepository pointHistoryRepository;
 
     public UserPoint point(long id) {
@@ -25,11 +24,26 @@ public class PointService {
     }
 
     public UserPoint charge(long id, long amount) {
-        long existsPoints = Optional.ofNullable(userPointRepository.selectById(id)).map(UserPoint::point).orElse(0L);
-        long totalAmount = existsPoints + amount;
+        long existPoints = this.selectExistPointsByUserId(id);
+        long totalAmount = existPoints + amount;
         UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
         pointHistoryRepository.insert(id, amount, TransactionType.CHARGE, System.currentTimeMillis());
-
         return userPoint;
+    }
+
+    public UserPoint use(long id, long amount) {
+        long existPoints = this.selectExistPointsByUserId(id);
+        if (amount > existPoints) {
+            throw new RuntimeException("잔액이 부족합니다.");
+        }
+
+        long totalAmount = existPoints - amount;
+        UserPoint userPoint = userPointRepository.insertOrUpdate(id, totalAmount);
+        pointHistoryRepository.insert(id, amount, TransactionType.USE, System.currentTimeMillis());
+        return userPoint;
+    }
+
+    private long selectExistPointsByUserId(long id) {
+        return Optional.ofNullable(userPointRepository.selectById(id)).map(UserPoint::point).orElse(0L);
     }
 }
